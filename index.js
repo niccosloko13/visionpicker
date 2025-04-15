@@ -1,31 +1,31 @@
 import express from "express";
+import { writeFile } from "fs/promises";
 import { exec } from "child_process";
-import path from "path";
-import { fileURLToPath } from "url";
 
 const app = express();
-const port = process.env.PORT || 3000;
+app.use(express.json());
 
-// necessário para __dirname funcionar com ES Modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+app.post("/visionpicker", async (req, res) => {
+  const { cookies } = req.body;
 
-app.get("/", (req, res) => {
-  res.send("✅ VisionPicker API está online!");
-});
+  if (!cookies) return res.status(400).send("❌ Nenhum cookie recebido.");
 
-app.get("/visionpicker", (req, res) => {
-  const scriptPath = path.join(__dirname, "visionpicker_raspagemlinks.js");
+  try {
+    await writeFile("cookies.json", cookies);
+    console.log("✅ Cookies recebidos e salvos.");
 
-  exec(`node ${scriptPath}`, (err, stdout, stderr) => {
-    if (err) {
-      console.error("Erro:", stderr);
-      return res.status(500).send("Erro ao executar o script.");
-    }
-    return res.send("✅ Script executado com sucesso:\n\n" + stdout);
-  });
+    exec("node visionpicker_raspagemlinks.js", (err, stdout, stderr) => {
+      if (err) {
+        console.error(stderr);
+        return res.status(500).send("❌ Erro ao executar o VisionPicker.");
+      }
+      return res.send("✅ Raspagem concluída com sucesso.\n\n" + stdout);
+    });
+  } catch (err) {
+    return res.status(500).send("❌ Falha ao salvar os cookies.");
+  }
 });
 
 app.listen(process.env.PORT || 3000, () => {
-    console.log(`Servidor rodando na porta ${process.env.PORT}`);
-  });  
+  console.log("🔌 API VisionPicker rodando...");
+});
